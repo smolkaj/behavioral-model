@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: antrea-io/has-changes@v1
+    - uses: antrea-io/has-changes@v2
       id: check_diff
       with:
-        args: docs/* *.md
+        paths-ignore: docs/* *.md
     outputs:
       has_changes: ${{ steps.check_diff.outputs.has_changes }}
 
@@ -64,3 +64,21 @@ jobs:
       run: docker build -t bm-no-pi --build-arg IMAGE_TYPE=test -f Dockerfile.noPI .
     - name: Run tests
       run: docker run --rm -w /behavioral-model bm-no-pi /bin/bash -c "make check -j$(nproc)"
+
+  test-ubuntu22:
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.has_changes == 'yes' }}
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    - name: Install dependencies
+      run: sudo ./install_deps_ubuntu_22.04.sh
+    - name: Build BMv2
+      run: |
+        ./autogen.sh
+        ./configure --with-pdfixed --with-pi --with-stress-tests --enable-debugger --enable-Werror
+        make -j$(nproc)
+    - name: Run tests
+      run: make check -j$(nproc)
