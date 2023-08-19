@@ -159,7 +159,8 @@ starts egress processing. The clock is the same as for
 pipeline, but should not be written to.
 - `mcast_grp`: needed for the multicast feature. This field needs to be written
 in the ingress pipeline when you wish the packet to be multicast. A value of 0
-means no multicast. This value must be one of a valid multicast group configured
+means no multicast. Calling `mark_to_drop` sets the value to 0.
+Nonzero values must be one of a valid multicast group configured
 through bmv2 runtime interfaces. See the "after-ingress pseudocode" for
 relative priority of this vs. other possible packet operations at
 end of ingress.
@@ -227,7 +228,7 @@ if (digest to generate) {   // because your code called generate_digest
 }
 if (resubmit was called) {
     start ingress processing over again for the original packet
-} else if (mcast_grp != 0) {  // because your code assigned a value to mcast_grp
+} else if (mcast_grp != 0) {  // because your code assigned a value to mcast_grp and did not call mark_to_drop
     multicast the packet to the output port(s) configured for group mcast_grp
 } else if (egress_spec == DROP_PORT) {  // e.g. because your code called drop/mark_to_drop
     Drop packet.
@@ -301,11 +302,12 @@ if (resubmit was called) {
     resubmit operation called.  The resubmitted packet will have
     instance_type equal to PKT_INSTANCE_TYPE_RESUBMIT.
 } else if (mcast_grp != 0) {
-    // This condition will be true if your code made an assignment to
-    // standard_metadata.mcast_grp during ingress processing.  There
-    // are no special primitive actions built in to simple_switch for
-    // you to call to do this -- use a normal P4_16 assignment
-    // statement, or P4_14 modify_field() primitive action.
+    // This condition will be true if your code made a assignment to
+    // `standard_metadata.mcast_grp` during ingress processing and did
+    // not call `mark_to_drop` afterwards. There are no special
+    // primitive actions built in to simple_switch for you to call to
+    // do this -- use a normal P4_16 assignment statement, or P4_14
+    // `modify_field()` primitive action.
     Make 0 or more copies of the packet based upon the list of
     (egress_port, egress_rid) values configured by the control plane
     for the mcast_grp value.  Enqueue each one in the appropriate
